@@ -82,6 +82,12 @@ app.post(
 );
 
 app.post("/login", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*"); // Allow all origins
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+
   const { username, password } = req.body;
 
   getUserByUsername(username, (err, user) => {
@@ -107,6 +113,12 @@ app.get(
   "/authenticatesession",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
+    res.header("Access-Control-Allow-Origin", "*"); // Allow all origins
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept"
+    );
+
     console.log("validated");
     res.json({ validated: 1 });
   }
