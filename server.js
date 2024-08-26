@@ -14,6 +14,7 @@ import {
 import jwt from "jsonwebtoken";
 import passport from "passport";
 import { Strategy, ExtractJwt } from "passport-jwt";
+import cors from "cors";
 const app = express();
 import dotenv from "dotenv";
 dotenv.config();
@@ -22,10 +23,28 @@ app.use(express.json()); // This is crucial
 
 app.use(passport.initialize());
 
+const allowedOrigins = [
+  "https://greenwood-client-2-erxu8.ondigitalocean.app",
+  "https://glm.josuii.com/",
+  "http://localhost:3000",
+];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+  })
+);
+
+app.options("*", cors()); // Allow preflight requests for all routes
+
 const opts = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey:
-  process.env.MYSQL_SECRET,
+  secretOrKey: process.env.MYSQL_SECRET,
 };
 
 passport.use(
@@ -43,20 +62,24 @@ passport.use(
   })
 );
 
-app.post("/register/newuser", async (req, res) => {
-  try {
-    const userData = req.body;
-    console.log(userData);
-    const result = await registerNewUser(userData);
-    console.log(result);
-    res.status(201).json({ message: "User registered successfully", result });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error registering user", error: error.message });
-    console.error(error);
+app.post(
+  "/register/newuser",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      const userData = req.body;
+      console.log(userData);
+      const result = await registerNewUser(userData);
+      console.log(result);
+      res.status(201).json({ message: "User registered successfully", result });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Error registering user", error: error.message });
+      console.error(error);
+    }
   }
-});
+);
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
@@ -108,48 +131,60 @@ app.get(
   }
 );
 
-app.post("/invoices/create", async (req, res) => {
-  try {
-    console.log(req.body);
-    const invoiceData = req.body;
-    const result = await insertInvoice(invoiceData);
-    res.status(201).json({ message: "Invoice created successfully", result });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating invoice", error: error.message });
+app.post(
+  "/invoices/create",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      console.log(req.body);
+      const invoiceData = req.body;
+      const result = await insertInvoice(invoiceData);
+      res.status(201).json({ message: "Invoice created successfully", result });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Error creating invoice", error: error.message });
+    }
   }
-});
+);
 
-app.post("/invoices/update/:id", async (req, res) => {
-  try {
-    const invoiceData = req.body;
-    const result = await updateInvoice(invoiceData);
-    res.status(201).json({ message: "Invoice updated:", result });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating invoice", error: error.message });
+app.post(
+  "/invoices/update/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      const invoiceData = req.body;
+      const result = await updateInvoice(invoiceData);
+      res.status(201).json({ message: "Invoice updated:", result });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Error creating invoice", error: error.message });
+    }
   }
-});
+);
 
 app.get("/invoices/create/currentnumber", async (req, res) => {
   const currentInvoicePlace = await getCurrentInvoiceNumber();
   res.json(currentInvoicePlace[0].CurrentInvoicePlace);
 });
 
+app.delete(
+  "/invoices/delete/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    const invoiceId = parseInt(req.params.id, 10);
+    try {
+      const result = await deleteInvoice(invoiceId);
+      res.status(201).json({ message: "Invoice deleted successfully", result });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Error deleting invoice", error: error.message });
+    }
+  }
+);
+
 app.listen(5520, () => {
   console.log("server started on port 5520");
-});
-
-app.delete("/invoices/delete/:id", async (req, res) => {
-  const invoiceId = parseInt(req.params.id, 10);
-  try {
-    const result = await deleteInvoice(invoiceId);
-    res.status(201).json({ message: "Invoice deleted successfully", result });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error deleting invoice", error: error.message });
-  }
 });
