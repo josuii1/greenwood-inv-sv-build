@@ -84,10 +84,24 @@ export async function comparePassword(inputPassword, userPassword, callback) {
 // Function to get all invoices from the database
 export async function getInvoices() {
   try {
-    const [invoices] = await pool.query("SELECT * FROM invoices.invoices ORDER BY ID DESC");
+    const [invoices] = await pool.query(
+      "SELECT * FROM invoices.invoices ORDER BY ID DESC"
+    );
     return invoices;
   } catch (error) {
     console.error("Error fetching invoices:", error);
+    throw error;
+  }
+}
+
+export async function getEstimates() {
+  try {
+    const [estimates] = await pool.query(
+      "SELECT * FROM invoices.estimates ORDER BY ID DESC"
+    );
+    return estimates;
+  } catch (error) {
+    console.error("Error fetching estimates:", error);
     throw error;
   }
 }
@@ -98,13 +112,40 @@ export async function insertInvoice(invoiceData) {
     const { invoiceNumber, customerName, invoiceDate, invoiceNotes, amount } =
       invoiceData;
 
-    const query = `INSERT INTO invoices.invoices SET invoiceNumber = ?, customerName = ?, invoiceDate = ?, invoiceNotes = ?, amount = ?`;
+    const query = `INSERT INTO invoices.invoices SET invoiceNumber = ?, customerName = ?, invoiceDate = ?, invoiceNotes = ?, amount = ?, accepted = 0, denied = 0`;
 
     const [result] = await pool.query(query, [
       invoiceNumber,
       customerName,
       invoiceDate,
       invoiceNotes,
+      amount,
+    ]);
+    return result;
+  } catch (error) {
+    console.error("Error inserting invoice:", error);
+    throw error;
+  }
+}
+
+// Function to insert a new estimate into the database
+export async function insertEstimate(estimateData) {
+  try {
+    const {
+      estimateNumber,
+      customerName,
+      estimateDate,
+      estimateNotes,
+      amount,
+    } = estimateData;
+
+    const query = `INSERT INTO invoices.estimates SET estimateNumber = ?, customerName = ?, estimateDate = ?, estimateNotes = ?, amount = ?`;
+
+    const [result] = await pool.query(query, [
+      estimateNumber,
+      customerName,
+      estimateDate,
+      estimateNotes,
       amount,
     ]);
     return result;
@@ -141,6 +182,32 @@ export async function getInvoiceDetails(id) {
   }
 }
 
+export async function getEstimateDetails(id) {
+  try {
+    const [estimate] = await pool.query(
+      "SELECT * FROM invoices.estimates where estimateNumber = ?",
+      [id]
+    );
+    return estimate;
+  } catch (error) {
+    console.error("Error fetching estimate:", error);
+    throw error;
+  }
+}
+
+export async function acceptEstimate(id) {
+  try {
+    const [estimate] = await pool.query(
+      `UPDATE invoices.estimates SET accepted = 1 WHERE id = ?`,
+      [id]
+    );
+    return estimate;
+  } catch (error) {
+    console.error("Error fetching estimate:", error);
+    throw error;
+  }
+}
+
 export async function getCurrentInvoiceNumber() {
   try {
     const [invoice] = await pool.query(
@@ -164,7 +231,6 @@ export async function updateInvoice(invoiceData) {
       id,
       invoiceNumber,
     } = invoiceData;
-
 
     const query = `UPDATE invoices.invoices SET customerName = ?, invoiceDate = ?, invoiceNotes = ?, paymentStatus = ?, amount = ? WHERE id = ? AND invoiceNumber = ?`;
 

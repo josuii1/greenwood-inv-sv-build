@@ -10,6 +10,10 @@ import {
   getInvoiceDetails,
   getCurrentInvoiceNumber,
   updateInvoice,
+  insertEstimate,
+  getEstimates,
+  getEstimateDetails,
+  acceptEstimate,
 } from "./database.js";
 import jwt from "jsonwebtoken";
 import passport from "passport";
@@ -26,7 +30,9 @@ app.use(passport.initialize());
 const allowedOrigins = [
   "https://greenwood-client-2-erxu8.ondigitalocean.app",
   "https://glm.josuii.com",
+  "https://view.josuii.com/",
   "http://localhost:3000",
+  "http://localhost:3001",
 ];
 app.use(
   cors({
@@ -134,6 +140,15 @@ app.get(
 );
 
 app.get(
+  "/estimates",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    const estimateList = await getEstimates();
+    res.json(estimateList);
+  }
+);
+
+app.get(
   "/invoices/details/:id",
   passport.authenticate("jwt", { session: false }),
   async (req, res) => {
@@ -142,6 +157,41 @@ app.get(
     res.json(invoice);
   }
 );
+
+app.get(
+  "/estimates/details/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    const estimateId = parseInt(req.params.id, 10);
+    const estimate = await getEstimateDetails(estimateId);
+    res.json(estimate);
+  }
+);
+
+//public facing estimate details
+
+app.get("/estimates/view/:id", async (req, res) => {
+  console.log(req);
+  const estimateNumber = req.params.id;
+
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'; // 52 characters
+
+  let decodedNumber = '' ;
+    
+  // Decode each pair of characters back into digits
+  for (let i = 0; i < 8; i += 2) {
+      const firstChar = estimateNumber[i];
+      const firstCharIndex = characters.indexOf(firstChar);
+
+      const digit = Math.floor(firstCharIndex / 5); // Reverse the original encoding
+      decodedNumber += digit.toString();
+  }
+
+  console.log(decodedNumber)
+
+  const estimate = await getEstimateDetails(decodedNumber);
+  res.json(estimate);
+});
 
 app.post(
   "/invoices/create",
@@ -161,6 +211,22 @@ app.post(
 );
 
 app.post(
+  "/estimates/create",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res) => {
+    try {
+      const estimateData = req.body;
+      const result = await insertEstimate(estimateData);
+      res.status(201).json({ message: "Invoice created successfully", result });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "Error creating estimate", error: error.message });
+    }
+  }
+);
+
+app.post(
   "/invoices/update/:id",
   passport.authenticate("jwt", { session: false }),
   async (req, res) => {
@@ -175,6 +241,18 @@ app.post(
     }
   }
 );
+
+app.post("/estimates/accept/:id", async (req, res) => {
+  try {
+    const estimateId = parseInt(req.params.id, 10);
+    const result = await acceptEstimate(estimateId);
+    res.status(201).json({ message: "Estimate accepted:", result });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error creating invoice", error: error.message });
+  }
+});
 
 app.get("/invoices/create/currentnumber", async (req, res) => {
   const currentInvoicePlace = await getCurrentInvoiceNumber();
