@@ -30,7 +30,7 @@ app.use(passport.initialize());
 const allowedOrigins = [
   "https://greenwood-client-2-erxu8.ondigitalocean.app",
   "https://glm.josuii.com",
-  "https://view.josuii.com/",
+  "https://view.josuii.com",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
